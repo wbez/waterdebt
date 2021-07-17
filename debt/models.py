@@ -2,29 +2,42 @@ from django.db import models
 
 # Create your models here.
 
+class Property(models.Model):
+    full_address = models.CharField(max_length=100, unique=True)
+    metered = models.BooleanField(null=True)
+
+
 class Debt(models.Model):
-    full_address = models.CharField(max_length = 100)
+    prop = models.ForeignKey(Property, null=True, on_delete=models.CASCADE)
+    full_address = models.CharField(max_length = 100) # TODO FK Property
     bad_debt_no = models.CharField(max_length = 50)
     debt_collector = models.CharField(max_length = 100) # TODO FK
     debt_date = models.DateField()
     debt_amt = models.IntegerField()
     penalty = models.IntegerField()
     payment = models.IntegerField()
-    metered = models.BooleanField()
     balance = models.IntegerField()
-    status = models.CharField(max_length=50) # TODO Choice
-    no_occurrences = models.IntegerField() # TODO what is this
-
+    # we don't have status or no/occurrences because delinquent acct file doesn't have full addresses
+    #status = models.CharField(max_length=50) # TODO Choice
+    # no_occurrences = models.IntegerField() # TODO what is this
 
 
 class Case(models.Model):
     nov = models.CharField(max_length=25,unique=True)
     street_dir = models.CharField(max_length=5)
     street_name = models.CharField(max_length=50)
-    zip_plus_four = models.IntegerField()
+    zip_code = models.IntegerField()
     disposition = models.CharField(max_length=100)
     admin_cost = models.IntegerField()
     sanction_cost = models.IntegerField()
     penalty = models.IntegerField()
     respondent = models.CharField(max_length=100)
+    
+    # TODO: MCV Description
+    # TODO: method to look up property candidates based on limited address info + debt
 
+"""
+class Collector(models.Model):
+    pass
+
+"""
