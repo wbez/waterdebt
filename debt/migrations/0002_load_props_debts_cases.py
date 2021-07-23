@@ -84,6 +84,9 @@ def find_street_name(split_address, numerical, directional, suffix, unit, unit_b
         street_name_starting_position += 1
 
     if suffix: # easy way to see where the street name ends
+        suffix_count = split_address.count(suffix) # don't get fooled by DR and ST when they're part of the street name e.g. DR MLK JR DR
+        if suffix_count > 1:
+            street_name_ending_position = split_address.index(suffix,split_address.index(suffix))
         street_name_ending_position = split_address.index(suffix)
     elif unit and not unit_before: # if we don't have a suffix, check for a unit after the street name
         street_name_ending_position = split_address.index('UNIT')
@@ -189,6 +192,7 @@ def load_debt():
     debt_data_2020 = agate.Table.from_xlsx(debt_data_path,sheet='2016-2021 Detail')
     
     # combine rows for concise code
+    print('combining debt sheets')
     debt_data = debt_data_2015.rows.values() + debt_data_2020.rows.values()
 
     # debt 2010-2015
@@ -197,33 +201,50 @@ def load_debt():
         # the hard part here is water debt and finance dept addresses are prob structured differently
         partitioned_address = partition_address(dd_dict['PREMADDRESS'])
         print(partitioned_address)
-        props = Property.objects.filter(
-                numeric_address = partitioned_address['numerical'],
-                street_dir = partitioned_address['directional'],
-                street_name = partitioned_address['street_name'],
-                )
-        # per Maria, unit doesn't matter. do street suffixes?
-        if len(list(props)) == 1:
-            # need a scalar to be sure
-            prop = props[0]
-        else:
-            prop = None
-        debt = Debt.objects.create(
-                prop = prop,
-                full_address = dd_dict['PREMADDRESS'],
-                bad_debt_no = dd_dict['BDBTNUM'], 
-				debt_collector = dd_dict['ACGY_NAME'],
-				debt_date = dd_dict['ASSIGNED_DATE'],
-				debt_amt = dd_dict['BD_AMT'],
-				# penalty???
-				payment = dd_dict['PYMT_AMT'],
-				# balance???
-				# we don't have status because delinquent acct file doesn't have full addresses
-				# no_occurrences?
-                )
-        debt.save()
-        print(debt.__dict__)
-
+        with transaction.atomic():
+            try: 
+                debt = Debt.objects.create(
+                        full_address = dd_dict['PREMADDRESS'],
+                        numeric_address = partitioned_address['numerical'],
+                        street_dir = partitioned_address['directional'],
+                        street_name = partitioned_address['street_name'],
+                        street_suffix = partitioned_address['street_suffix'],
+                        unit = partitioned_address['unit'],
+                        zipcode = partitioned_address['zipcode'],
+                        bad_debt_no = dd_dict['BDBTNUM'], 
+                        debt_collector = dd_dict['ACGY_NAME'],
+                        debt_date = dd_dict['ASSIGNED_DATE'],
+                        debt_amt = dd_dict['BD_AMT'],
+                        # penalty???
+                        payment = dd_dict['PYMT_AMT'],
+                        payment_date = dd_dict['PYMT_CREATE_DATE'],
+                        payment_water = dd_dict['PYMTS_WTR'],
+                        payment_sewer = dd_dict['PYMTS_SWR'],
+                        payment_other = dd_dict['PYMTS_OTH'],
+                        payment_water_tax = dd_dict['PYMTS_WTRTAX'],
+                        payment_sewer_tax = dd_dict['PYMTS_SWRTAX'],
+                        payment_refuse = dd_dict['PYMTS_REFUSE'],
+                        payment_water_penalty = dd_dict['PYMTS_WTRPEN'],
+                        payment_sewer_penalty = dd_dict['PYMTS_SWRPEN'],
+                        payment_refuse_penalty = dd_dict['PYMTS_REFUSEPEN'],
+                        fee_water = dd_dict['FEE_WTR'],
+                        fee_sewer = dd_dict['FEE_SWR'],
+                        fee_other = dd_dict['FEE_OTH'],
+                        fee_water_tax = dd_dict['FEE_WTRTAX'],
+                        fee_sewer_tax = dd_dict['FEE_SWRTAX'],
+                        fee_refuse = dd_dict['FEE_REFUSE'],
+                        fee_water_penalty = dd_dict['FEE_WTRPEN'],
+                        fee_sewer_penalty = dd_dict['FEE_SWRPEN'],
+                        fee_refuse_penalty = dd_dict['FEE_REFUSEPEN']
+                        # balance???
+                        # we don't have status because delinquent acct file doesn't have full addresses
+                        # no_occurrences?
+                        )
+                debt.save()
+                print(debt.__dict__)
+            except Exception as e:
+                print(e)
+                import ipdb; ipdb.set_trace()
 
 def load_case():
     """
@@ -235,20 +256,28 @@ def load_case():
 
     # load cases
     for admin_case in admin_data:
-        case_dict = row_to_dict(admin_case,admin_data.column_names)
-        case = Case.objects.create(
-                nov = case_dict['Nov #'],
-                street_dir = case_dict['NOV Street Direction Prefix Code'],
-                street_name = case_dict['NOV Street Name'],
-                zip_code = case_dict['NOV Zip Code'],
-                disposition = case_dict['Disposition Description'],
-                admin_cost = case_dict['Admin Costs'],
-                sanction_cost = case_dict['Sanction Dollars'],
-                penalty = case_dict['Sanction Dollars'],
-                # respondent = case_dict # TODO: read in respondent sheet
-                )
-        case.save()
-
+        try:
+            case_dict = row_to_dict(admin_case,admin_data.column_names)
+            case = Case.objects.create(
+                    nov = case_dict['Nov #'],
+                    docket_no = case_dict['Docket Number'],
+                    nov_issued_date = case_dict['NOV Issued Date'],
+                    hearing_date = case_dict['Hearing Date'],
+                    street_dir = case_dict['NOV Street Direction Prefix Code'],
+                    street_name = case_dict['NOV Street Name'],
+                    zip_code = case_dict['NOV Zip Code'],
+                    violation = case_dict['MCV Description w/ Disposition'],
+                    disposition = case_dict['Disposition Description'],
+                    admin_cost = case_dict['Admin Costs'],
+                    sanction_cost = case_dict['Sanction Dollars'],
+                    fine = case_dict['Imposed Fine Detailed'],
+                    # respondent = case_dict # TODO: read in respondent sheet
+                    )
+            case.save()
+            print(case.__dict__)
+        except Exception as e:
+            print(e)
+            import ipdb; ipdb.set_trace()
         
 
 def row_to_dict(row, header):

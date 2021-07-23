@@ -17,29 +17,83 @@ class Property(models.Model):
 
 class Debt(models.Model):
     prop = models.ForeignKey(Property, null=True, on_delete=models.CASCADE)
-    full_address = models.CharField(max_length = 100) # TODO FK Property
-    bad_debt_no = models.CharField(max_length = 50)
+    full_address = models.CharField(max_length = 100) 
+    # address parts
+    numeric_address = models.IntegerField(null=True)
+    street_dir = models.CharField(max_length=1, null=True)
+    street_name = models.CharField(max_length=50)
+    street_suffix = models.CharField(max_length=10, null=True)
+    unit = models.CharField(max_length=30, null=True)
+    zipcode = models.CharField(max_length=10,null=True)
+    # debt stuff
+    bad_debt_no = models.CharField(max_length = 50,null=True)
     debt_collector = models.CharField(max_length = 100) # TODO FK
-    debt_date = models.DateField()
-    debt_amt = models.IntegerField()
-    penalty = models.IntegerField()
-    payment = models.IntegerField()
-    balance = models.IntegerField()
+    debt_date = models.DateField(null=True)
+    debt_amt = models.IntegerField(null=True)
+    penalty = models.IntegerField(null=True)
+    payment = models.IntegerField(null=True)
+    payment_date = models.DateField(null=True)
+    payment_water = models.IntegerField(null=True)
+    payment_sewer = models.IntegerField(null=True)
+    payment_other = models.IntegerField(null=True)
+    payment_water_tax = models.IntegerField(null=True)
+    payment_sewer_tax = models.IntegerField(null=True)
+    payment_refuse = models.IntegerField(null=True)
+    payment_water_penalty = models.IntegerField(null=True)
+    payment_sewer_penalty = models.IntegerField(null=True)
+    payment_refuse_penalty = models.IntegerField(null=True)
+    fee_water = models.IntegerField(null=True)
+    fee_sewer = models.IntegerField(null=True)
+    fee_other = models.IntegerField(null=True)
+    fee_water_tax = models.IntegerField(null=True)
+    fee_sewer_tax = models.IntegerField(null=True)
+    fee_refuse = models.IntegerField(null=True)
+    fee_water_penalty = models.IntegerField(null=True)
+    fee_sewer_penalty = models.IntegerField(null=True)
+    fee_refuse_penalty = models.IntegerField(null=True)
+    # balance = models.IntegerField(null=True)
     # we don't have status or no/occurrences because delinquent acct file doesn't have full addresses
     #status = models.CharField(max_length=50) # TODO Choice
     # no_occurrences = models.IntegerField() # TODO what is this
 
+    def get_prop_cands(self):
+        """
+        retrieve properties 
+        that might match this debt 
+        on address, etc.
+
+        per Maria, don't search on units.
+        what about street direction?
+        """
+        return Property.objects.filter(
+                numeric_address=self.numeric_address,
+                street_dir=self.street_dir,
+                street_name=self.street_name)
+
+
+    def get_prop(self):
+        """
+        return matching property if only 1 matches
+        """
+        cands = self.get_prop_cands()
+        return cands[0] if len(list(cands)) == 1 else None
+
+
 
 class Case(models.Model):
-    nov = models.CharField(max_length=25,unique=True)
-    street_dir = models.CharField(max_length=5)
-    street_name = models.CharField(max_length=50)
-    zip_code = models.IntegerField()
-    disposition = models.CharField(max_length=100)
-    admin_cost = models.IntegerField()
-    sanction_cost = models.IntegerField()
-    penalty = models.IntegerField()
-    respondent = models.CharField(max_length=100)
+    nov = models.CharField(max_length=25,null=True)
+    docket_no = models.CharField(max_length=25,null=True)
+    nov_issued_date = models.DateField(null=True)
+    hearing_date = models.DateField(null=True)
+    street_dir = models.CharField(max_length=5,null=True)
+    street_name = models.CharField(max_length=50,null=True)
+    zip_code = models.CharField(max_length=10,null=True)
+    violation = models.CharField(max_length=250,null=True)
+    disposition = models.CharField(max_length=250,null=True)
+    admin_cost = models.IntegerField(null=True)
+    sanction_cost = models.IntegerField(null=True)
+    fine = models.IntegerField(null=True)
+    respondent = models.CharField(max_length=100,null=True)
     
     # TODO: MCV Description
     # TODO: method to look up property candidates based on limited address info + debt
