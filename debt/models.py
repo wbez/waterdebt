@@ -16,6 +16,10 @@ class Property(models.Model):
 
 
 class Debt(models.Model):
+    """
+    only debt currently under collection by law firms
+    TODO: rename Payments
+    """
     prop = models.ForeignKey(Property, null=True, on_delete=models.CASCADE)
     full_address = models.CharField(max_length = 100) 
     # address parts
@@ -79,6 +83,25 @@ class Debt(models.Model):
         return cands[0] if len(list(cands)) == 1 else None
 
 
+class Account(models.Model):
+    """
+    'Delinquent accounts 2010-now.xlsx'
+    all delinquent accounts 2010-2021 
+    -- 'the entire universe' - M.Z.
+    """
+    address = models.CharField(max_length=100,null=True)
+    zipcode = models.CharField(max_length=5,null=True)
+    status = models.CharField(max_length=1,null=True)
+    metered = models.BooleanField(null=True)
+    balance = models.FloatField(null=True)
+    water_balance = models.FloatField(null=True)
+    sewer_balance = models.FloatField(null=True)
+    tax_balance = models.FloatField(null=True)
+    penalty_balance = models.FloatField(null=True)
+    garbage_balance = models.FloatField(null=True)
+    other_balance = models.FloatField(null=True)
+    no_delinquencies = models.FloatField(null=True)
+
 
 class Case(models.Model):
     nov = models.CharField(max_length=25,null=True)
@@ -97,6 +120,12 @@ class Case(models.Model):
     
     # TODO: MCV Description
     # TODO: method to look up property candidates based on limited address info + debt
+
+
+class ZipCode(models.Model):
+    five_digit = models.CharField(max_length=5)
+    total_pop = models.IntegerField(null=True)
+    majority_race = models.CharField(max_length=20,null=True)
 
 """
 class Collector(models.Model):
