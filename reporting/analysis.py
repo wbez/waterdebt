@@ -1,6 +1,7 @@
-from debt.models import Debt, Property, Case
+from debt.models import Debt, Property, Case, Account, ZipCode
 from django.db import connection
 import csv
+from water.settings import BASE_DIR
 
 # TODO: write a wrapper function
 # that takes a SQL query string,
@@ -11,10 +12,54 @@ import csv
 # that takes a dict list or queryset 
 # and writes out a csv to reports dir
 
+### START CONFIG ###
+reports_dir = str(BASE_DIR) + '/reporting/reports/'
+### END CONFIG ###
+
+
+def debt_by_zipcode():
+    """
+    return zip, # debts, debt $, racial majority
+    """
+    # most/all chicago zips start with 606
+    chi_zips = ZipCode.objects.filter(five_digit__startswith='606')
+    rows = []
+    for chi_zip in chi_zips:
+        # get all active accounts for this zip
+        zip_debts = Account.objects.filter(zipcode=chi_zip.five_digit,status='A')
+        # get number and total amt of debts
+        row = {
+                'zipcode': chi_zip.five_digit,
+                'racial_maj': chi_zip.majority_race,
+                'no_debts': len(zip_debts),
+                'total_debt_amt': sum([x.balance for x in zip_debts]),
+                'summed_debt_amt': sum([sum([x.water_balance,x.sewer_balance,x.tax_balance,x.penalty_balance,x.garbage_balance,x.other_balance]    ) for x in zip_debts]),
+                'water_balance': sum([x.water_balance for x in zip_debts]),
+                'sewer_balance': sum([x.sewer_balance for x in zip_debts]),
+                'tax_balance': sum([x.sewer_balance for x in zip_debts]),
+                'penalty_balance': sum([x.penalty_balance for x in zip_debts]),
+                'garbage_balance': sum([x.garbage_balance for x in zip_debts]),
+                'other_balance': sum([x.other_balance for x in zip_debts])
+                }
+        rows.append(row)
+    
+    # write results
+    outfile = open(reports_dir + 'debt_by_zipcode.csv','w')
+    outcsv = csv.DictWriter(outfile,rows[0].keys())
+    outcsv.writeheader()
+    outcsv.writerows(rows)
+    outfile.close()
+
+
+
+
+
+
 def water_debt_zips():
     """
     Q: Where is water debt located in the city?
     https://docs.google.com/document/d/1i8XCkkRE7JZtn5qecI87zmnpJUC67rrTkCXqsR76Dbc/edit#heading=h.essvytoq7u9m
+    NOTE: queries Debt records
     """
     with connection.cursor() as cursor:
         cursor.execute(
@@ -78,3 +123,7 @@ def metered_unmetered_debt():
             'metered_debt_total': metered_debt_total,
             'unmetered_debt_total': unmetered_debt_total
             }
+
+
+if __name__ == "__main__":
+    pass
