@@ -127,6 +127,57 @@ class ZipCode(models.Model):
     total_pop = models.IntegerField(null=True)
     majority_race = models.CharField(max_length=20,null=True)
 
+
+class Vacancy(models.Model):
+    prop = models.ForeignKey(Property, null=True, on_delete=models.CASCADE)
+    docket_no = models.CharField(max_length=10, null=True)
+    violation_no = models.CharField(max_length=197, null=True)
+    issue_date = models.DateField() # TODO: models.DateField
+    issue_dept = models.CharField(max_length=7, null=True)
+    last_hearing_date = models.CharField(max_length=20, null=True)
+    property_address = models.CharField(max_length=22,null=True)
+    # address parts
+    numeric_address = models.IntegerField(null=True)
+    street_dir = models.CharField(max_length=1, null=True)
+    street_name = models.CharField(max_length=50)
+    street_suffix = models.CharField(max_length=10, null=True)
+    unit = models.CharField(max_length=30, null=True)
+    zipcode = models.CharField(max_length=10,null=True)
+    # end address parts
+    violation_type = models.CharField(max_length=20, null=True)
+    entity_person = models.CharField(max_length=105, null=True)
+    disposition = models.CharField(max_length=100, null=True)
+    fines = models.FloatField(null=True)
+    admin_costs =  models.FloatField(null=True)
+    interest = models.FloatField(null=True)
+    collection_atty_fees = models.FloatField(null=True)
+    court_cost = models.FloatField(null=True)
+    original_total_due = models.FloatField(null=True)
+    total_paid = models.FloatField(null=True)
+    current_due = models.FloatField(null=True)
+
+    def get_prop_cands(self):
+        """
+        retrieve properties 
+        that might match this debt 
+        on address, etc.
+
+        per Maria, don't search on units.
+        what about street direction?
+        """
+        return Property.objects.filter(
+                numeric_address=self.numeric_address,
+                street_dir=self.street_dir,
+                street_name=self.street_name)
+
+
+    def get_prop(self):
+        """
+        return matching property if only 1 matches
+        """
+        cands = self.get_prop_cands()
+        return cands[0] if len(list(cands)) == 1 else None
+
 """
 class Collector(models.Model):
     pass

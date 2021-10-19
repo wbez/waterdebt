@@ -17,6 +17,12 @@ reports_dir = str(BASE_DIR) + '/reporting/reports/'
 ### END CONFIG ###
 
 
+def debt_by_unmetered():
+    accounts = Account.objects.all()
+    nonmetered_accounts = Account.objects.filter(metered=False)
+
+
+
 def debt_by_zipcode():
     """
     return zip, # debts, debt $, racial majority
@@ -99,6 +105,12 @@ def metered_unmetered_debt():
                 # unexpected
                 return "multiple debt amounts for bad debt no " + str(debt.bad_debt_no)
     
+            metered_debts[debt.bad_debt_no].append(debt.debt_amt)
+            # test
+            if len(set(metered_debts[debt.bad_debt_no])) > 1:
+                # unexpected
+                return "multiple debt amounts for bad debt no " + str(debt.bad_debt_no)
+    
     for prop in unmetered:
         for debt in prop.debt_set.all():
             if debt.bad_debt_no not in unmetered_debts:
@@ -120,10 +132,42 @@ def metered_unmetered_debt():
         unmetered_debt_total += unmetered_debts[ud][0] if unmetered_debts[md] else 0
 
     return {
-            'metered_debt_total': metered_debt_total,
-            'unmetered_debt_total': unmetered_debt_total
-            }
+            'metered_debt_total': metered_debt_total}
 
 
-if __name__ == "__main__":
-    pass
+def vacancies_and_debts():
+    """
+    get all properties marked vacant
+    and any debts within 90 days,
+    one address per row
+    """
+    vac_props_debts = [x for x in Property.objects.all() if x.vacancy_set.all() and x.debt_set.all()]
+    interesting = set()
+    outfile = open('reporting/reports/properties_marked_vacant_with_debts_less_than_90_days_later.csv','w')
+    headers = ['prop_address','metered','vacancy_address','vacancy_violation_no','vacancy_issue_date','debt_address','bad_debt_no','debt_date']
+    outcsv = csv.DictWriter(outfile,headers)
+    outcsv.writeheader()
+    for prop in vac_props_debts:
+        row = {
+                'prop_address': prop.full_address,
+                'metered': prop.metered,
+                'vacancy_violation_number': '',
+                'vacancy_issue_date': '',
+                'bad_debt_no': '',
+                'debt_date': ''
+                }
+        for vac in prop.vacancy_set.all():
+            row['vacancy_address'] = vac.property_address
+            row['vacancy_violation_number'] += vac.violation_no + ' | '
+            row['vacancy_issue_date'] += str(vac.issue_date) + ' | '
+
+            for debt in prop.debt_set.filter(debt_date__range=[vac.issue_date,vac.issue_date+datetime.timedelta(90)]):
+
+                row['debt_address'] = debt.full_address
+                row['bad_debt_no'] += debt.bad_debt_no + ' | '
+                row['debt_date'] += str(debt.debt_date) + ' | '
+
+        outcsv.writerow(row)
+
+    outfile.close()
+
