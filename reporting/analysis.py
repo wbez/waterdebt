@@ -2,6 +2,8 @@ from debt.models import Debt, Property, Case, Account, ZipCode
 from django.db import connection
 import csv
 from water.settings import BASE_DIR
+import datetime
+
 
 # TODO: write a wrapper function
 # that takes a SQL query string,
@@ -151,14 +153,14 @@ def vacancies_and_debts():
         row = {
                 'prop_address': prop.full_address,
                 'metered': prop.metered,
-                'vacancy_violation_number': '',
+                'vacancy_violation_no': '',
                 'vacancy_issue_date': '',
                 'bad_debt_no': '',
                 'debt_date': ''
                 }
         for vac in prop.vacancy_set.all():
             row['vacancy_address'] = vac.property_address
-            row['vacancy_violation_number'] += vac.violation_no + ' | '
+            row['vacancy_violation_no'] += vac.violation_no + ' | '
             row['vacancy_issue_date'] += str(vac.issue_date) + ' | '
 
             for debt in prop.debt_set.filter(debt_date__range=[vac.issue_date,vac.issue_date+datetime.timedelta(90)]):
