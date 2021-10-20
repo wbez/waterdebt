@@ -137,7 +137,7 @@ def metered_unmetered_debt():
             'metered_debt_total': metered_debt_total}
 
 
-def vacancies_and_debts():
+def vacancies_and_debts(delta=90):
     """
     get all properties marked vacant
     and any debts within 90 days,
@@ -163,13 +163,13 @@ def vacancies_and_debts():
             row['vacancy_violation_no'] += vac.violation_no + ' | '
             row['vacancy_issue_date'] += str(vac.issue_date) + ' | '
 
-            for debt in prop.debt_set.filter(debt_date__range=[vac.issue_date,vac.issue_date+datetime.timedelta(90)]):
-
+            debts = prop.debt_set.filter(debt_date__range=[vac.issue_date,vac.issue_date+datetime.timedelta(delta)])
+            for debt in debts:
                 row['debt_address'] = debt.full_address
                 row['bad_debt_no'] += debt.bad_debt_no + ' | '
                 row['debt_date'] += str(debt.debt_date) + ' | '
-
-        outcsv.writerow(row)
+        if debts:
+            outcsv.writerow(row)
 
     outfile.close()
 
