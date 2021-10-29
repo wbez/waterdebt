@@ -28,10 +28,8 @@ reports_dir = str(BASE_DIR) + '/reporting/reports/'
 
 def universe_of_accounts():
     """
-    the big number of this story
-    per AL, let's be conservative and go with the smaller number
-    (current balance, not the itemized total)
-    but only include active accounts, balances > 0 (not negative debt)
+    only includes active accounts, 
+    balances > 0 (not negative debt)
     """
     return Account.objects.filter(
             balance__gt=0,
@@ -42,7 +40,7 @@ def universe_of_accounts():
 def universe_of_debt():
     """
     the big number for the story
-    current balance for each account in the universe
+    get each account in the universe
     """
     accounts = universe_of_accounts()
     total_debt = sum([
@@ -59,9 +57,9 @@ def universe_of_debt():
                     ]) 
                     for x in accounts])
     if total_debt < summed_debt:
-        return total_debt
+        return ('total debt:',total_debt)
     else:
-        return summed_debt
+        return ('summed debt:',summed_debt)
 
 
 ###################
