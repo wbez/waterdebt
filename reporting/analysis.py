@@ -39,8 +39,12 @@ def universe_of_accounts():
 
 def universe_of_debt():
     """
-    the big number for the story
-    get each account in the universe
+    the big number for the story:
+    (per AL be conservative and take the smaller of 
+    two slightly different sets of numbers the city gave us)
+    get each account in the universe,
+    total up current balance and itemized balances separately,
+    then return the smaller of the two
     """
     accounts = universe_of_accounts()
     total_debt = sum([
