@@ -101,6 +101,16 @@ class Account(models.Model):
     garbage_balance = models.FloatField(null=True)
     other_balance = models.FloatField(null=True)
     no_delinquencies = models.FloatField(null=True)
+    @property
+    def summed_balance(self):
+        return sum([
+            self.water_balance,
+            self.sewer_balance,
+            self.tax_balance,
+            self.penalty_balance,
+            self.garbage_balance,
+            self.other_balance])
+
 
 
 class Case(models.Model):

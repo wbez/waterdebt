@@ -27,18 +27,7 @@ reports_dir = str(BASE_DIR) + '/reporting/reports/'
 
 
 def universe_of_accounts():
-    """
-    only includes active accounts, 
-    balances > 0 (not negative debt)
-    """
-    return Account.objects.filter(
-            balance__gt=0,
-            status='A'
-            )
-
-
-def universe_of_debt():
-    """
+    """"
     the big number for the story:
     (per AL be conservative and take the smaller of 
     two slightly different sets of numbers the city gave us)
@@ -46,66 +35,78 @@ def universe_of_debt():
     total up current balance and itemized balances separately,
     then return the smaller of the two
     """
-    accounts = universe_of_accounts()
-    total_debt = sum([
-        x.balance
-        for x in accounts])
-    summed_debt = sum([
-                    sum([
-                        x.water_balance,
-                        x.sewer_balance,
-                        x.tax_balance,
-                        x.penalty_balance,
-                        x.garbage_balance,
-                        x.other_balance
-                    ]) 
-                    for x in accounts])
-    if total_debt < summed_debt:
-        return ('total debt:',total_debt)
+    
+    # active accounts only
+    active_accounts = Account.objects.filter(status='A')
+    
+    # get active accounts with current balance > 0
+    positive_current_balance_accounts = active_accounts.filter(balance__gt=0)
+
+    # get active accounts with summed balance > 0
+    positive_summed_balance_accounts = []
+    for account in active_accounts:
+        if account.summed_balance > 0:
+            positive_summed_balance_accounts.append(account)
+
+    # get totals from both sets
+    current_balance_total = sum([x.balance for x in positive_current_balance_accounts])
+    summed_balance_total = sum([x.summed_balance for x in positive_summed_balance_accounts])
+    print('current_balance_total',current_balance_total)
+    print('summed_balance_total',summed_balance_total)
+
+    # check which is less and return that list
+    if current_balance_total < summed_balance_total:
+        print('returning current balance:',current_balance_total)
+        return list(positive_current_balance_accounts) 
     else:
-        return ('summed debt:',summed_debt)
+        print('returning summed balance:',summed_balance_total)
+        return positive_summed_balance_accounts
 
 
-###################
-#                 #
-# END BIG NUMBERS #
-#                 # 
-###################
-
-
-
-def debt_by_unmetered():
-    accounts = Account.objects.all()
-    nonmetered_accounts = Account.objects.filter(metered=False)
-
+accounts = universe_of_accounts()
 
 
 def debt_by_zipcode():
     """
     return zip, # debts, debt $, racial majority
     """
-    # most/all chicago zips start with 606
-    #chi_zips = ZipCode.objects.filter(five_digit__startswith='606')
-    chi_zips = ZipCode.objects.all()
+    # get all the zipcodes in the delinquent acct table 
+    five_digits = list(set([x.zipcode for x in accounts])) 
+    
+    # for some reason there are ~5-6 zipcodes in the delinquent acct file
+    # that aren't in AL's zipcode file: 
+    # 46325, 60170, 60635, 60666, 60699, 66041
+    # ... so we have to handle those differently
+    zip_digis = set([z.five_digit for z in ZipCode.objects.all()])
+    missing_zips = [x for x in five_digits if x not in zip_digis] # includes zip=None 
     rows = []
-    for chi_zip in chi_zips:
+    for five_digit in five_digits:
+        try:
+            # have to handle missing zips
+            zipcodes = ZipCode.objects.filter(five_digit=five_digit)
+            zipcode = zipcodes[0] if zipcodes else None
+        except Exception as e:
+            print(e)
+            import ipdb; ipdb.set_trace()
         # get all active accounts for this zip
-        zip_debts = Account.objects.filter(zipcode=chi_zip.five_digit,status='A',balance__gt=0)
-        zip_props = Property.objects.filter(zipcode=chi_zip.five_digit)
+        zip_debts = Account.objects.filter(zipcode=five_digit,status='A',balance__gt=0)
+        zip_props = Property.objects.filter(zipcode=five_digit)
         # get number and total amt of debts
         row = {
-                'zipcode': chi_zip.five_digit,
-                'racial_maj': chi_zip.majority_race,
-                'total_pop': chi_zip.total_pop,
+                'zipcode': five_digit if five_digit else 'None',
+                'racial_maj': zipcode.majority_race if zipcode else 'No data',
+                'total_pop': zipcode.total_pop if zipcode else 'No data',
+                'no_properties': len(zip_props) if five_digit else None,
                 'no_debts': len(zip_debts),
-                'total_debt_amt': sum([x.balance for x in zip_debts]),
+                # using summed_debt_amount because it's lower than total in aggregate
+                #'total_debt_amt': sum([x.balance for x in zip_debts]),
                 'summed_debt_amt': sum([sum([x.water_balance,x.sewer_balance,x.tax_balance,x.penalty_balance,x.garbage_balance,x.other_balance]) for x in zip_debts]),
-                'water_balance': sum([x.water_balance for x in zip_debts]),
-                'sewer_balance': sum([x.sewer_balance for x in zip_debts]),
-                'tax_balance': sum([x.sewer_balance for x in zip_debts]),
-                'penalty_balance': sum([x.penalty_balance for x in zip_debts]),
-                'garbage_balance': sum([x.garbage_balance for x in zip_debts]),
-                'other_balance': sum([x.other_balance for x in zip_debts]),
+                #'water_balance': sum([x.water_balance for x in zip_debts]),
+                #'sewer_balance': sum([x.sewer_balance for x in zip_debts]),
+                #'tax_balance': sum([x.sewer_balance for x in zip_debts]),
+                #'penalty_balance': sum([x.penalty_balance for x in zip_debts]),
+                #'garbage_balance': sum([x.garbage_balance for x in zip_debts]),
+                #'other_balance': sum([x.other_balance for x in zip_debts]),
                 #'no_metered_homes': len([x for x in zip_props if x.metered]),
                 'no_metered_homes': len([x for x in zip_debts if x.metered]),
                 #'no_unmetered_homes': len([x for x in zip_props if not x.metered]),
@@ -132,6 +133,21 @@ def debt_by_zipcode():
         print(e)
         import ipdb; ipdb.set_trace()
     outfile.close()
+
+
+
+###################
+#                 #
+# END BIG NUMBERS #
+#                 # 
+###################
+
+
+
+def debt_by_unmetered():
+    accounts = Account.objects.all()
+    nonmetered_accounts = Account.objects.filter(metered=False)
+
 
 
 
