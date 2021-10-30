@@ -71,7 +71,7 @@ def debt_by_zipcode():
     return zip, # debts, debt $, racial majority
     """
     # get all the zipcodes in the delinquent acct table 
-    five_digits = list(set([x.zipcode for x in accounts])) 
+    five_digits = list(set([x.zipcode for x in Account.objects.all()])) 
     
     # for some reason there are ~5-6 zipcodes in the delinquent acct file
     # that aren't in AL's zipcode file: 
@@ -88,8 +88,9 @@ def debt_by_zipcode():
         except Exception as e:
             print(e)
             import ipdb; ipdb.set_trace()
-        # get all active accounts for this zip
+        # get all active accounts for this zip and use current debt
         zip_debts = Account.objects.filter(zipcode=five_digit,status='A',balance__gt=0)
+        # zip_debts = [x for x in Account.objects.filter(zipcode=five_digit,status='A') if x.summed_balance > 0]
         zip_props = Property.objects.filter(zipcode=five_digit)
         # get number and total amt of debts
         row = {
@@ -99,8 +100,8 @@ def debt_by_zipcode():
                 'no_properties': len(zip_props) if five_digit else None,
                 'no_debts': len(zip_debts),
                 # using summed_debt_amount because it's lower than total in aggregate
-                #'total_debt_amt': sum([x.balance for x in zip_debts]),
-                'summed_debt_amt': sum([sum([x.water_balance,x.sewer_balance,x.tax_balance,x.penalty_balance,x.garbage_balance,x.other_balance]) for x in zip_debts]),
+                'total_debt_amt': sum([x.balance for x in zip_debts]),
+                #'summed_debt_amt': sum(sum([x.summed_balance for x in zip_debts])),
                 #'water_balance': sum([x.water_balance for x in zip_debts]),
                 #'sewer_balance': sum([x.sewer_balance for x in zip_debts]),
                 #'tax_balance': sum([x.sewer_balance for x in zip_debts]),
