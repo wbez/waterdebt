@@ -76,7 +76,7 @@ def debt_by_zipcode():
     # for some reason there are ~5-6 zipcodes in the delinquent acct file
     # that aren't in AL's zipcode file: 
     # 46325, 60170, 60635, 60666, 60699, 66041
-    # ... so we have to handle those differently
+    # noting that none of the illinois zips exist, 46325 is Indiana
     zip_digis = set([z.five_digit for z in ZipCode.objects.all()])
     missing_zips = [x for x in five_digits if x not in zip_digis] # includes zip=None 
     rows = []
@@ -121,6 +121,7 @@ def debt_by_zipcode():
             row['avg_metered_debt'] = row['total_debt_unmetered']/row['no_metered_homes'] if row['no_metered_homes'] else None
             row['avg_unmetered_debt'] = row['total_debt_unmetered']/row['no_unmetered_homes'] if row['no_unmetered_homes'] else None
             rows.append(row)
+        row['debt_per_property'] = row['total_debt_amt'] / row['no_properties'] if row['no_properties'] else None
 
     sorted_rows = sorted(rows,key = lambda x: x['no_debts'], reverse = True)
     
