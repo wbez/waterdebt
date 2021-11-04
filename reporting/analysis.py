@@ -99,7 +99,7 @@ def debt_by_zipcode():
                 'total_pop': zipcode.total_pop if zipcode else 'No data',
                 'no_properties': len(zip_props) if five_digit else None,
                 'no_debts': len(zip_debts),
-                # using summed_debt_amount because it's lower than total in aggregate
+                # using total_debt_amount because it's lower than total in aggregate
                 'total_debt_amt': sum([x.balance for x in zip_debts]),
                 #'summed_debt_amt': sum(sum([x.summed_balance for x in zip_debts])),
                 #'water_balance': sum([x.water_balance for x in zip_debts]),
